@@ -1,20 +1,21 @@
 #include "common/mavlink.h"
 #include <Arduino.h>
 
-#define SERIAL_BAUD 115200 // MAVLink communication baud rate
-#define SYSTEM_ID 1    // MAVLink system ID (unique identifier for the ESP32)
-#define COMPONENT_ID 1 // MAVLink component ID
-#define MAV_TYPE                                                               \
-  MAV_TYPE_QUADROTOR // MAV type (can be set to other types if needed)
+#define SERIAL_BAUD 115200       // MAVLink communication baud rate
+#define SYSTEM_ID 1              // MAVLink system ID (unique identifier for the ESP32)
+#define COMPONENT_ID 1           // MAVLink component ID
+#define MAV_TYPE MAV_TYPE_ROCKET // MAVType
 
 mavlink_message_t msg;
 
-void setup() {
+void setup()
+{
   // Initialize serial communication
   Serial.begin(SERIAL_BAUD); // MAVLink communication
 }
 
-void loop() {
+void loop()
+{
   // Define a heartbeat message
   mavlink_message_t msg;
   uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
