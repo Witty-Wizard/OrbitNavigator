@@ -39,7 +39,6 @@ void setReports(sh2_SensorId_t reportType, long report_interval) {
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
-  Wire.setPins(18, 5);
   if (!bno08x.begin_I2C()) {
     Serial.println("Failed to find BNO08x chip");
     while (1) {
