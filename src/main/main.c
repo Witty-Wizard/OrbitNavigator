@@ -1,48 +1,42 @@
-#include "stm32g4xx_hal.h"
+#include <common/mavlink.h>
 #include <stdio.h>
+#include <stm32g4xx_hal.h>
+#include <stm32g4xx_ll_bus.h>
+#include <stm32g4xx_ll_cortex.h>
+#include <stm32g4xx_ll_crs.h>
+#include <stm32g4xx_ll_dma.h>
+#include <stm32g4xx_ll_exti.h>
+#include <stm32g4xx_ll_gpio.h>
+#include <stm32g4xx_ll_lpuart.h>
+#include <stm32g4xx_ll_pwr.h>
+#include <stm32g4xx_ll_rcc.h>
+#include <stm32g4xx_ll_system.h>
+#include <stm32g4xx_ll_utils.h>
 
-#include "stm32g4xx_ll_bus.h"
-#include "stm32g4xx_ll_cortex.h"
-#include "stm32g4xx_ll_crs.h"
-#include "stm32g4xx_ll_dma.h"
-#include "stm32g4xx_ll_exti.h"
-#include "stm32g4xx_ll_gpio.h"
-#include "stm32g4xx_ll_pwr.h"
-#include "stm32g4xx_ll_rcc.h"
-#include "stm32g4xx_ll_system.h"
-#include "stm32g4xx_ll_utils.h"
-
-#define RCC_OSC32_IN_Pin LL_GPIO_PIN_14
-#define RCC_OSC32_IN_GPIO_Port GPIOC
-#define RCC_OSC32_OUT_Pin LL_GPIO_PIN_15
-#define RCC_OSC32_OUT_GPIO_Port GPIOC
-#define RCC_OSC_IN_Pin LL_GPIO_PIN_0
-#define RCC_OSC_IN_GPIO_Port GPIOF
-#define RCC_OSC_OUT_Pin LL_GPIO_PIN_1
-#define RCC_OSC_OUT_GPIO_Port GPIOF
-#define T_SWDIO_Pin LL_GPIO_PIN_13
-#define T_SWDIO_GPIO_Port GPIOA
-#define T_SWCLK_Pin LL_GPIO_PIN_14
-#define T_SWCLK_GPIO_Port GPIOA
-#define T_SWO_Pin LL_GPIO_PIN_3
-#define T_SWO_GPIO_Port GPIOB
+LL_LPUART_InitTypeDef Serial;
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_LPUART1_UART_Init(void);
 void Error_Handler(void);
+void send_heartbeat(int system_id, int component_id);
+
+void LPUART_SendByte(uint8_t data) {
+  while (!LL_LPUART_IsActiveFlag_TXE(LPUART1))
+    ;
+  LL_LPUART_TransmitData8(LPUART1, data);
+}
 
 int main(void) {
-
   HAL_Init();
 
   SystemClock_Config();
 
   MX_GPIO_Init();
+  MX_LPUART1_UART_Init();
 
   while (1) {
-    LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
-    LL_mDelay(500);
-    LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
+    send_heartbeat(1, 1);
     LL_mDelay(500);
   }
 }
@@ -80,24 +74,91 @@ void SystemClock_Config(void) {
   LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
   LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
   LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
-  LL_SetSystemCoreClock(170000000);
 
-  /* Update the time base */
-  if (HAL_InitTick(TICK_INT_PRIORITY) != HAL_OK) {
-    Error_Handler();
-  }
+  LL_Init1msTick(170000000);
+
+  LL_SetSystemCoreClock(170000000);
 }
 
 static void MX_GPIO_Init(void) {
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOC);
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOF);
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 
+  // Configure GPIO for onboard LED (optional, PA5)
   LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_5, LL_GPIO_MODE_OUTPUT);
   LL_GPIO_SetPinOutputType(GPIOA, LL_GPIO_PIN_5, LL_GPIO_OUTPUT_PUSHPULL);
   LL_GPIO_SetPinSpeed(GPIOA, LL_GPIO_PIN_5, LL_GPIO_SPEED_FREQ_LOW);
   LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_5, LL_GPIO_PULL_NO);
+}
+
+static void MX_LPUART1_UART_Init(void) {
+  LL_LPUART_InitTypeDef LPUART_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  LL_RCC_SetLPUARTClockSource(LL_RCC_LPUART1_CLKSOURCE_PCLK1);
+
+  LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_LPUART1);
+
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_2;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Alternate = LL_GPIO_AF_12;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Alternate = LL_GPIO_AF_12;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  LPUART_InitStruct.PrescalerValue = LL_LPUART_PRESCALER_DIV1;
+  LPUART_InitStruct.BaudRate = 115200;
+  LPUART_InitStruct.DataWidth = LL_LPUART_DATAWIDTH_8B;
+  LPUART_InitStruct.StopBits = LL_LPUART_STOPBITS_1;
+  LPUART_InitStruct.Parity = LL_LPUART_PARITY_NONE;
+  LPUART_InitStruct.TransferDirection = LL_LPUART_DIRECTION_TX_RX;
+  LPUART_InitStruct.HardwareFlowControl = LL_LPUART_HWCONTROL_NONE;
+  LL_LPUART_Init(LPUART1, &LPUART_InitStruct);
+  LL_LPUART_SetTXFIFOThreshold(LPUART1, LL_LPUART_FIFOTHRESHOLD_1_8);
+  LL_LPUART_SetRXFIFOThreshold(LPUART1, LL_LPUART_FIFOTHRESHOLD_1_8);
+  LL_LPUART_DisableFIFO(LPUART1);
+
+  LL_LPUART_Enable(LPUART1);
+
+  while ((!(LL_LPUART_IsActiveFlag_TEACK(LPUART1))) ||
+         (!(LL_LPUART_IsActiveFlag_REACK(LPUART1)))) {
+  }
+}
+
+void send_heartbeat(int system_id, int component_id) {
+  // Create the heartbeat message
+  mavlink_message_t msg;
+  uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+
+  // Populate the HEARTBEAT message fields
+  uint8_t type = MAV_TYPE_QUADROTOR; // Vehicle type (e.g., MAV_TYPE_GENERIC,
+                                     // MAV_TYPE_QUADROTOR)
+  uint8_t autopilot = MAV_AUTOPILOT_GENERIC; // Autopilot type
+  uint8_t base_mode = MAV_MODE_PREFLIGHT;    // Current mode
+  uint32_t custom_mode = 0; // Custom mode (application-specific)
+  uint8_t system_status = MAV_STATE_ACTIVE; // System status
+
+  // Encode the HEARTBEAT message
+  mavlink_msg_heartbeat_pack(system_id, component_id, &msg, type, autopilot,
+                             base_mode, custom_mode, system_status);
+
+  // Serialize the message
+  uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+
+  // Send the message byte by byte using LPUART_SendByte
+  for (int i = 0; i < len; i++) {
+    LPUART_SendByte(buf[i]);
+  }
 }
 
 void Error_Handler(void) {
