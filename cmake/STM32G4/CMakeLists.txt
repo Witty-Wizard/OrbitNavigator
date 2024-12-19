@@ -15,16 +15,12 @@ target_compile_definitions(STM32G4 INTERFACE
 )
 
 target_include_directories(STM32G4 INTERFACE
-    ../../include
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Inc
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Inc/Legacy
     ../../lib/STM32G4xx/Device/ST/CMSIS/Include
 )
 
 target_sources(STM32G4 INTERFACE
-    ../../src/main/main.c
-    ../../src/main/stm32g4xx_it.c
-    ../../src/main/stm32g4xx_hal_msp.c
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Src/stm32g4xx_ll_utils.c
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Src/stm32g4xx_ll_exti.c
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Src/stm32g4xx_ll_gpio.c
@@ -48,10 +44,7 @@ target_sources(STM32G4 INTERFACE
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_usart_ex.c
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.c
     ../../lib/STM32G4xx/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.c
-    ../../src/main/system_stm32g4xx.c
-    ../../src/main/sysmem.c
-    ../../src/main/syscalls.c
-    ../../src/startup/startup_stm32g474xx.s
+    ${CMAKE_SOURCE_DIR}/src/startup/startup_stm32g474xx.s
 )
 
 target_link_directories(STM32G4 INTERFACE

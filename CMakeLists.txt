@@ -45,11 +45,18 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/main/main.c
+    ${CMAKE_SOURCE_DIR}/src/main/stm32g4xx_it.c
+    ${CMAKE_SOURCE_DIR}/src/main/stm32g4xx_hal_msp.c
+    ${CMAKE_SOURCE_DIR}/src/main/system_stm32g4xx.c
+    ${CMAKE_SOURCE_DIR}/src/main/sysmem.c
+    ${CMAKE_SOURCE_DIR}/src/main/syscalls.c
     # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include
     # Add user defined include paths
 )
 
